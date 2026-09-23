@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SBSA Node Down Comment Generator</title>
+
+<style>
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Segoe UI,sans-serif;
+}
+
+body{
+    background:#0f172a;
+    color:#fff;
+    padding:20px;
+}
+
+.container{
+    max-width:1400px;
+    margin:auto;
+}
+
+h1{
+    text-align:center;
+    color:#38bdf8;
+    margin-bottom:20px;
+}
+
+.card{
+    background:#1e293b;
+    border-radius:12px;
+    padding:20px;
+    margin-bottom:20px;
+}
+
+textarea{
+    width:100%;
+    background:#0f172a;
+    color:white;
+    border:1px solid #334155;
+    border-radius:8px;
+    padding:15px;
+    resize:vertical;
+}
+
+#inputData{
+    min-height:280px;
+}
+
+.output{
+    min-height:450px;
+}
+
+.controls{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:15px;
+}
+
+button{
+    border:none;
+    padding:12px 18px;
+    border-radius:8px;
+    cursor:pointer;
+    font-weight:600;
+}
+
+.generate{
+    background:#0284c7;
+    color:white;
+}
+
+.copy{
+    background:#16a34a;
+    color:white;
+}
+
+select{
+    padding:12px;
+    border-radius:8px;
+    background:#0f172a;
+    color:white;
+    border:1px solid #334155;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:20px;
+}
+
+@media(max-width:900px){
+    .grid{
+        grid-template-columns:1fr;
+    }
+}
+
+.label{
+    margin-bottom:10px;
+    color:#38bdf8;
+    font-weight:bold;
+}
+
+input{
+    padding:12px;
+    border-radius:8px;
+    border:1px solid #334155;
+    background:#0f172a;
+    color:white;
+    min-width:220px;
+}
+
+#themeBtn{
+    background:#f59e0b;
+    color:white;
+}
+
+.light-mode{
+    background:#f1f5f9;
+    color:#0f172a;
+}
+
+.light-mode .card{
+    background:white;
+}
+
+.light-mode textarea{
+    background:white;
+    color:#0f172a;
+}
+
+.light-mode select{
+    background:white;
+    color:#0f172a;
+}
+
+.light-mode input{
+    background:white;
+    color:#0f172a;
+}
+
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<h1>SBSA Node Down Comment Generator</h1>
+
+<div class="card">
+
+<div class="label">
+Paste LogicMonitor Alert
+</div>
+
+<textarea id="inputData"></textarea>
+
+<div class="controls">
+<input
+id="engineerName"
+type="text"
+value="Mohith Vema"
+placeholder="Engineer Name"
+style="
+padding:12px;
+border-radius:8px;
+border:1px solid #334155;
+background:#0f172a;
+color:white;
+min-width:220px;">
+
+<button id="themeBtn" onclick="toggleTheme()">
+🌙 Dark Mode
+</button>
+
+
+
+<button class="generate" onclick="generateInvestigation()">
+Generate Investigation
+</button>
+
+<button class="copy" onclick="copyComment('investigationOutput')">
+Copy Investigation
+</button>
+
+<select id="recoveryType">
+<option value="Telco">Telco Issue</option>
+<option value="Power">Power Issue</option>
+</select>
+
+<button class="generate" onclick="generateClosure()">
+Generate Closure
+</button>
+
+<button class="copy" onclick="copyComment('closureOutput')">
+Copy Closure
+</button>
+
+</div>
+
+</div>
+
+<div class="grid">
+
+<div class="card">
+
+<div class="label">
+Investigation Comment
+</div>
+
+<textarea id="investigationOutput" class="output"></textarea>
+
+</div>
+
+<div class="card">
+
+<div class="label">
+Closure Comment
+</div>
+
+<textarea id="closureOutput" class="output"></textarea>
+
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+function parseAlert(){
+
+    const text =
+    document.getElementById("inputData").value;
+
+    const hostMatch =
+    text.match(/host-name:([^,\]]+)/i);
+
+    const hostname =
+    hostMatch ? hostMatch[1].trim() : "";
+
+    const dateMatch =
+    text.match(
+    /Detected on:\s*(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2}):(\d{2})/i
+    );
+
+    let eventDate = null;
+
+    if(dateMatch){
+
+        const year = parseInt(dateMatch[1]);
+        const month = parseInt(dateMatch[2]) - 1;
+        const day = parseInt(dateMatch[3]);
+        const hour = parseInt(dateMatch[4]);
+        const minute = parseInt(dateMatch[5]);
+        const second = parseInt(dateMatch[6]);
+
+        eventDate =
+        new Date(
+        Date.UTC(
+        year,
+        month,
+        day,
+        hour,
+        minute,
+        second));
+
+        eventDate.setHours(
+        eventDate.getHours()+2);
+    }
+
+    return {
+        hostname,
+        eventDate
+    };
+
+}
+
+function isBusinessHours(){
+
+    const now = new Date();
+
+    const hour = now.getHours();
+
+    return hour >= 8 && hour < 17;
+
+}
+
+function longDate(date){
+
+    const months=[
+    "January","February","March",
+    "April","May","June",
+    "July","August","September",
+    "October","November","December"
+    ];
+
+    return String(date.getDate()).padStart(2,"0")
+    + " "
+    + months[date.getMonth()]
+    + " "
+    + date.getFullYear();
+
+}
+
+function shortDate(date){
+
+    return String(date.getDate()).padStart(2,"0")
+    + "/"
+    + String(date.getMonth()+1).padStart(2,"0")
+    + "/"
+    + date.getFullYear();
+
+}
+
+function time24(date){
+
+    return date.toLocaleTimeString(
+    "en-GB",
+    {
+    hour:"2-digit",
+    minute:"2-digit"
+    });
+
+}
+
+function time12(date){
+
+    return date.toLocaleTimeString(
+    "en-US",
+    {
+    hour:"2-digit",
+    minute:"2-digit",
+    hour12:true
+    });
+
+}
+
+function currentTimeStamp(){
+
+    const now = new Date();
+
+    return longDate(now)
+    + " "
+    + time12(now)
+    + " SAST";
+
+}
+
+function generateInvestigation(){
+
+    const data = parseAlert();
+
+    if(!data.hostname){
+        alert("Hostname not found");
+        return;
+    }
+
+    if(!data.eventDate){
+        alert("Detected time not found");
+        return;
+    }
+
+    let troubleshooting;
+
+    if(isBusinessHours()){
+
+        troubleshooting =
+`-> Need to Ask the client to confirm the power status or any activity at the site
+-> Also, logging a case with Vodacom to check the WAN Links`;
+
+    }else{
+
+        troubleshooting =
+`-> Need to Ask the client to confirm the power status or any activity at the site in the BH
+-> Also, logging a case with Vodacom to check the WAN Links`;
+
+    }
+
+    let actionPlan;
+
+    if(isBusinessHours()){
+
+        actionPlan =
+`ACTION PLAN
+=====================
+1. ${getEngineerName()} (NTT) to investigate the case ==> completed
+2. Need to send mail to client ==> ${shortDate(new Date())}
+3. Vodacom team to check further`;
+
+    }else{
+
+        actionPlan =
+`ACTION PLAN
+=====================
+1. ${getEngineerName()} (NTT) to investigate the case ==> completed
+2. Need to send mail to client in BH ==> ${shortDate(new Date())}
+3. Vodacom team to check further`;
+
+    }
+
+    const comment =
+`EVENT DESCRIPTION
+=====================
+${data.hostname} is down on ${longDate(data.eventDate)} at ${time24(data.eventDate)} SAST
+
+TROUBLESHOOTING
+=====================
+${currentTimeStamp()} ${getEngineerName()} (NTT MNS) checked the ${data.hostname} is down
+
+${troubleshooting}
+
+BUSINESS IMPACT
+=====================
+Users can't use the services
+
+${actionPlan}`;
+
+document.getElementById(
+"investigationOutput").value = comment;
+
+}
+
+function generateClosure(){
+
+    const data = parseAlert();
+
+    if(!data.hostname){
+        alert("Hostname not found");
+        return;
+    }
+
+    if(!data.eventDate){
+        alert("Detected time not found");
+        return;
+    }
+
+    const recovery =
+    document.getElementById(
+    "recoveryType").value;
+
+    let troubleshooting = "";
+
+    if(recovery==="Telco"){
+
+        troubleshooting =
+`${currentTimeStamp()} ${getEngineerName()} (NTT MNS) checked the ${data.hostname}. The router is down due to outage caused by a telco. Connectivity has been restored and the device is now reachable.`;
+
+    }else{
+
+        troubleshooting =
+`${currentTimeStamp()} ${getEngineerName()} (NTT MNS) checked the ${data.hostname}. The device was down due to a power issue at the site and recovered after power restoration. Router is up and operational.`;
+
+    }
+
+    const comment =
+`EVENT DESCRIPTION
+=====================
+${data.hostname} is down on ${longDate(data.eventDate)} at ${time24(data.eventDate)} SAST
+
+TROUBLESHOOTING
+=====================
+${troubleshooting}
+
+BUSINESS IMPACT
+=====================
+no impact
+
+ACTION PLAN
+=====================
+1. ${getEngineerName()} (NTT) to investigate the case ==> completed
+2. ${getEngineerName()} (NTT) to close the case ==> completed`;
+
+document.getElementById(
+"closureOutput").value = comment;
+
+}
+
+function copyComment(id){
+
+    const text =
+    document.getElementById(id);
+
+    navigator.clipboard.writeText(
+    text.value);
+
+}
+function getEngineerName(){
+
+    return document
+        .getElementById("engineerName")
+        .value.trim() || "Mohith Vema";
+
+}
+
+function toggleTheme(){
+
+    document.body.classList.toggle(
+        "light-mode"
+    );
+
+    const isLight =
+        document.body.classList.contains(
+            "light-mode"
+        );
+
+    localStorage.setItem(
+        "theme",
+        isLight ? "light" : "dark"
+    );
+
+    document.getElementById(
+        "themeBtn"
+    ).innerHTML =
+        isLight
+        ? "☀️ Light Mode"
+        : "🌙 Dark Mode";
+}
+
+window.addEventListener("load", () => {
+
+    const theme =
+        localStorage.getItem("theme");
+
+    if(theme === "light"){
+
+        document.body.classList.add(
+            "light-mode"
+        );
+
+        document.getElementById(
+            "themeBtn"
+        ).innerHTML =
+            "☀️ Light Mode";
+    }
+
+});
+
+window.addEventListener("load", () => {
+
+    const savedName =
+        localStorage.getItem("engineerName");
+
+    if(savedName){
+
+        document.getElementById(
+            "engineerName"
+        ).value = savedName;
+    }
+
+    document.getElementById(
+        "engineerName"
+    ).addEventListener("input", function(){
+
+        localStorage.setItem(
+            "engineerName",
+            this.value
+        );
+
+    });
+
+});
+</script>
+
+</body>
+</html>
